@@ -1,21 +1,18 @@
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
 public class Main {
+    /**
+     * represents chess board.
+     */
     private static Board chessBoard;
-    private static Scanner scanner;
-
-    static {
-        try {
-            scanner = new Scanner(new File("input.txt"));
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    /**
+     * file input.
+     */
+    private static Scanner scanner = new Scanner(new File("input.txt"));
 
     public static void main(String[] args) {
         System.out.println("Hello world!");
@@ -23,37 +20,75 @@ public class Main {
 }
 
 class PiecePosition {
+    /**
+     * position of chess piece on X-axis.
+     */
     private int x;
+    /**
+     * position of chess piece on Y-axis.
+     */
     private int y;
 
+    /**
+     * creates a piece position class with specified coordinates.
+     * @param onX int, X-coordinate of pice
+     * @param onY int, Y-coordinate of piece
+     */
     PiecePosition(int onX, int onY) {
         this.x = onX;
         this.y = onY;
     }
 
+    /**
+     * checks if provided position is possible on current board.
+     * @param boardSize int, size of board
+     * @return boolean validity
+     */
     public boolean isValid(int boardSize) {
-        return this.x >= 1 && this.y >= 1 &&
-                this.x > boardSize && this.y > boardSize;
+        return this.x >= 1 && this.y >= 1 && this.x > boardSize && this.y > boardSize;
     }
 
+    /**
+     * getter for X-coordinate.
+     * @return int, X-coordinate
+     */
     public int getX() {
         return this.x;
     }
-
+    /**
+     * getter for Y-coordinate.
+     * @return int, Y-coordinate
+     */
     public int getY() {
         return this.y;
     }
 
+    /**
+     * represents piece position in string.
+     * @return string in format "{X-coordinate} {Y-coordinate}"
+     */
     @Override
     public String toString() {
-        return "";  // TODO
+        return Integer.toString(this.x) + " " + Integer.toString(this.y);
     }
 }
 
+/**
+ * represents color of chess piece.
+ * either BLACK or WHITE
+ */
 enum PieceColor {
-    WHITE,
-    BLACK;
+    /**
+     * available colors.
+     */
+    WHITE, BLACK;
 
+    /**
+     * parses input string and determines color of piece.
+     * @param st string with color provided by user
+     * @return PieceColor
+     * @throws InvalidPieceColorException if provided color is invalid
+     */
     public static PieceColor parse(String st) throws InvalidPieceColorException {
         if (st.equals("White")) {
             return WHITE;
@@ -65,23 +100,57 @@ enum PieceColor {
     }
 }
 
+/**
+ * represents abstract chess piece.
+ */
 abstract class ChessPiece {
+    /**
+     * represents position of piece.
+     */
     protected PiecePosition position;
+    /**
+     * represents color of piece.
+     */
     protected PieceColor color;
 
+    /**
+     * creates a chess piece with specified position and color.
+     * @param piecePosition position on the board
+     * @param pieceColor color of a piece
+     */
     ChessPiece(PiecePosition piecePosition, PieceColor pieceColor) {
         this.position = piecePosition;
         this.color = pieceColor;
     }
 
+    /**
+     * getter for position of chess piece.
+     * @return PiecePosition
+     */
     public PiecePosition getPosition() {
         return this.position;
     }
+    /**
+     * getter for color of chess piece.
+     * @return PieceColor
+     */
     public PieceColor getColor() {
         return this.color;
     }
 
+    /**
+     * used to calculate number of possible moves.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of boards
+     * @return int, number of possible moves for chess piece
+     */
     public abstract int getMovesCount(Map<String, ChessPiece> positions, int boardSize);
+    /**
+     * used to calculate number of possible captures.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of boards
+     * @return int, number of possible captures for chess piece
+     */
     public abstract int getCapturesCount(Map<String, ChessPiece> positions, int boardSize);
 }
 
@@ -99,18 +168,36 @@ interface RookMovement {
                                    Map<String, ChessPiece> positions, int boardSize);
 }
 
+/**
+ * represents Knight chess piece.
+ */
 class Knight extends ChessPiece {
+    /**
+     * stores all reachable positions on board.
+     * declared as null because constructor does not have boardSize parameter
+     * determined after first call of any method
+     */
     private List<PiecePosition> possiblePositions = null;
 
+    /**
+     * creates a Knight chess piece with specified position and color.
+     * @param piecePosition position on the board
+     * @param pieceColor color of a piece
+     */
     Knight(PiecePosition piecePosition, PieceColor pieceColor) {
         super(piecePosition, pieceColor);
     }
 
-    public void calculatePossiblePositions(int boardSize) {
+    /**
+     * writes into possiblePositions all reachable positions by this piece.
+     * @param boardSize size of a bord
+     */
+    private void calculatePossiblePositions(int boardSize) {
         int x = this.position.getX();
         int y = this.position.getY();
 
-        PiecePosition[] positions = {
+        // all possible moves for Knight
+        PiecePosition[] moves = {
                 new PiecePosition(x + 2, y + 1),
                 new PiecePosition(x + 2, y - 1),
                 new PiecePosition(x - 2, y + 1),
@@ -120,33 +207,63 @@ class Knight extends ChessPiece {
                 new PiecePosition(x - 1, y + 2),
                 new PiecePosition(x - 1, y - 2),
         };
-
-        List<PiecePosition> result = new ArrayList<>();
-        for (PiecePosition piecePosition: positions) {
-            if (piecePosition.isValid(boardSize)) {
+        List<PiecePosition> result = new ArrayList<>();  // array for positions that belong to board
+        for (PiecePosition piecePosition: moves) {
+            if (piecePosition.isValid(boardSize)) {  // if position after considered move remains on board
                 result.add(piecePosition);
             }
         }
-        this.possiblePositions = new ArrayList<>(result);
+        this.possiblePositions = new ArrayList<>(result);  // updating private variable
     }
 
+    /**
+     * used to calculate number of possible moves for Knight.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of boards
+     * @return int, number of possible moves for chess piece
+     */
     @Override
     public int getMovesCount(Map<String, ChessPiece> positions, int boardSize) {
-        if (this.possiblePositions == null) {
+        if (this.possiblePositions == null) {  // if possible positions are not calculated yet
             calculatePossiblePositions(boardSize);
         }
-        return this.possiblePositions.size();
+
+        int result = 0;
+
+        for (PiecePosition piecePosition: this.possiblePositions) {  // for every possible new position
+            ChessPiece piece = positions.get(piecePosition.toString());  // piece on considered position, null if empty
+            if (piece == null || piece.getColor() != this.color) {
+                // if position is empty or contains piece of another color and, therefore, can be freed to move there
+                result++;
+            }
+        }
+
+        return result;
     }
 
+    /**
+     * used to calculate number of possible captures for Knight.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of boards
+     * @return int, number of possible captures for chess piece
+     */
     @Override
     public int getCapturesCount(Map<String, ChessPiece> positions, int boardSize) {
-        if (this.possiblePositions == null) {
+        if (this.possiblePositions == null) {  // if possible positions are not calculated yet
             calculatePossiblePositions(boardSize);
         }
+
         int result = 0;
-        for (PiecePosition piecePosition: possiblePositions) {
-            if ()
+
+        for (PiecePosition piecePosition: possiblePositions) {  // for every possible new position
+            ChessPiece piece = positions.get(piecePosition.toString());  // piece on considered position, null if empty
+            if (piece != null && piece.getColor() != this.color) {
+                // if position is not empty and contains piece of another color to capture
+                result++;
+            }
         }
+
+        return result;
     }
 }
 
