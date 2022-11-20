@@ -259,6 +259,43 @@ class Knight extends ChessPiece {
     }
 }
 
+/**
+ * represents king chess piece.
+ */
+class King extends ChessPiece {
+   /**
+     * creates a King chess piece with specified position and color.
+     * @param piecePosition position on the board
+     * @param pieceColor color of a piece
+     */
+    King(PiecePosition piecePosition, PieceColor pieceColor) {
+        super(piecePosition, pieceColor);
+    }
+
+    /**
+     * writes into possiblePositions all reachable positions by this piece.
+     * @param boardSize size of a bord
+     */
+    protected void calculatePossiblePositions(int boardSize) {
+        int x = this.position.getX();
+        int y = this.position.getY();
+
+        List<PiecePosition> moves = new ArrayList<>();
+
+        for (int dx = -1; dx < 2; dx++) {  // bias in x
+            for (int dy = -1; dy < 2; dy++) {  // bias in y
+                // trying all possible variants
+                PiecePosition piecePosition = new PiecePosition(x + dx, y + dy);
+                if (piecePosition.isValid(boardSize) && (dx != 0 && dy != 0)) {
+                    moves.add(piecePosition);
+                }
+            }
+        }
+
+        this.possiblePositions = new ArrayList<>(moves);
+    }
+}
+
 class Board {
     private Map<String, ChessPiece> positionsToPieces = new LinkedHashMap<String, ChessPiece>();
     private int size;
