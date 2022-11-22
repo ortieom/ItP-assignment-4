@@ -1,6 +1,6 @@
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.Scanner;
@@ -36,7 +36,7 @@ class PiecePosition {
 
     /**
      * creates a piece position class with specified coordinates.
-     * @param onX int, X-coordinate of pice
+     * @param onX int, X-coordinate of piece
      * @param onY int, Y-coordinate of piece
      */
     PiecePosition(int onX, int onY) {
@@ -119,7 +119,7 @@ abstract class ChessPiece {
     protected PieceColor color;
     /**
      * stores all reachable positions on board.
-     * declared as null because constructor does not have boardSize parameter
+     * declared as null because constructor does not have boardSize parameter.
      * determined after first call of any method
      */
     protected List<PiecePosition> possiblePositions = null;
@@ -260,7 +260,7 @@ class Knight extends ChessPiece {
 }
 
 /**
- * represents king chess piece.
+ * represents King chess piece.
  */
 class King extends ChessPiece {
    /**
@@ -296,6 +296,90 @@ class King extends ChessPiece {
     }
 }
 
+/**
+ * represents Pawn chess piece.
+ */
+class Pawn extends ChessPiece {
+    /**
+     * creates a Pawn chess piece with specified position and color.
+     * @param piecePosition position on the board
+     * @param pieceColor color of a piece
+     */
+    Pawn(PiecePosition piecePosition, PieceColor pieceColor) {
+        super(piecePosition, pieceColor);
+    }
+
+    @Override  // redundant here (useful for King & Knight), probably will be reformatted later - TODO
+    protected void calculatePossiblePositions(int boardSize) {
+        return;
+    }
+
+    /**
+     * used to calculate number of possible moves for Pawn.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of boards
+     * @return 1 if way for move is clear, else 0
+     */
+    @Override
+    public int getMovesCount(Map<String, ChessPiece> positions, int boardSize) {
+        int result;  // return value
+
+        int direction;  // +1 means forward, -1 - backwards
+        if (this.color == PieceColor.WHITE) {
+            direction = 1;
+        } else {
+            direction = -1;
+        }
+
+        PiecePosition moveForward = new PiecePosition(this.position.getX(), this.position.getY() + direction);
+        ChessPiece pieceInFront = positions.get(moveForward.toString());
+
+        if (moveForward.isValid(boardSize) && (pieceInFront == null || pieceInFront.color != this.color)) {
+            // if cell in forward direction is empty or can be attacked
+            result = 1;
+        } else {
+            result = 0;
+        }
+
+        return result;
+    }
+
+    /**
+     * used to calculate number of possible captures for Pawn.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of boards
+     * @return int, number of possible captures
+     */
+    @Override
+    public int getCapturesCount(Map<String, ChessPiece> positions, int boardSize) {
+        int result = 0;  // return value
+
+        int direction;  // +1 means forward, -1 - backwards
+        if (this.color == PieceColor.WHITE) {
+            direction = 1;
+        } else {
+            direction = -1;
+        }
+
+        // positions that can be attacked by Pawn
+        PiecePosition move1 = new PiecePosition(this.position.getX() + direction, this.position.getY() - 1);
+        PiecePosition move2 = new PiecePosition(this.position.getX() + direction, this.position.getY() + 1);
+        // chess pieces on attacked positions
+        ChessPiece piece1 = positions.get(move1.toString());
+        ChessPiece piece2 = positions.get(move2.toString());
+
+        if (move1.isValid(boardSize) && piece1 != null && this.color != piece1.getColor()) {
+            // if cell is valid and there is a piece of another color
+            result++;
+        }
+        if (move2.isValid(boardSize) && piece2 != null && this.color != piece2.getColor()) {
+            result++;
+        }
+
+        return result;
+    }
+}
+
 class Board {
     private Map<String, ChessPiece> positionsToPieces = new LinkedHashMap<String, ChessPiece>();
     private int size;
@@ -304,23 +388,23 @@ class Board {
         this.size = boardSize;
     }
 
-    public int getPiecePossibleMoveCount(ChessPiece piece) {
-
-    }
-
-    public int getPiecePossibleCapturesCount(ChessPiece piece) {
-
-    }
-
-    public void addPiece(ChessPiece piece)
-            throws InvalidPiecePositionException, InvalidNumberOfPiecesException,
-            InvalidPieceNameException, InvalidGivenKingsException {
-
-    }
-
-    public ChessPiece getPiece(PiecePosition position) {
-
-    }
+//    public int getPiecePossibleMoveCount(ChessPiece piece) {
+//
+//    }
+//
+//    public int getPiecePossibleCapturesCount(ChessPiece piece) {
+//
+//    }
+//
+//    public void addPiece(ChessPiece piece)
+//            throws InvalidPiecePositionException, InvalidNumberOfPiecesException,
+//            InvalidPieceNameException, InvalidGivenKingsException {
+//
+//    }
+//
+//    public ChessPiece getPiece(PiecePosition position) {
+//
+//    }
 }
 
 class InvalidBoardSizeException extends Exception {
