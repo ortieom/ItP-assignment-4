@@ -158,7 +158,7 @@ abstract class ChessPiece {
     /**
      * used to calculate number of possible moves.
      * @param positions Map<String, ChessPiece>, positions of pieces on board
-     * @param boardSize int, size of boards
+     * @param boardSize int, size of board
      * @return int, number of possible moves for chess piece
      */
     public int getMovesCount(Map<String, ChessPiece> positions, int boardSize) {
@@ -181,7 +181,7 @@ abstract class ChessPiece {
     /**
      * used to calculate number of possible captures.
      * @param positions Map<String, ChessPiece>, positions of pieces on board
-     * @param boardSize int, size of boards
+     * @param boardSize int, size of board
      * @return int, number of possible captures for chess piece
      */
     public int getCapturesCount(Map<String, ChessPiece> positions, int boardSize) {
@@ -203,18 +203,232 @@ abstract class ChessPiece {
     }
 }
 
+/**
+ * represents actions of Bishop and partly of Queen.
+ */
 interface BishopMovement {
-    int getDiagonalMovesCount(PiecePosition position, PieceColor color,
-                              Map<String, ChessPiece> positions, int boardSize);
-    int getDiagonalCapturesCount(PiecePosition position, PieceColor color,
-                                 Map<String, ChessPiece> positions, int boardSize);
+    /**
+     * used to calculate number of possible diagonal moves.
+     * @param position PiecePosition, position of considered chess piece
+     * @param color PieceColor, color of considered chess piece
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible diagonal moves
+     */
+    default int getDiagonalMovesCount(PiecePosition position, PieceColor color,
+                                      Map<String, ChessPiece> positions, int boardSize) {
+        int result = 0;  // return value
+        // start position
+        int x = position.getX();
+        int y = position.getY();
+
+        // flags represent availability of movement in corresponding direction: up left, up right, down left, down right
+        boolean[] directionFlags = {true, true, true, true};
+        // multipliers for offset in X & Y with respect to direction
+        int[] offsetMultiplierX = {-1, 1, -1, 1};
+        int[] offsetMultiplierY = {1, 1, -1, -1};
+        int offset = 0;  // how many moves from start
+
+        PiecePosition move;  // for considered move
+        ChessPiece piece;  // for piece placed on the considered move
+
+        int directionsAvailableCnt = 4;
+        while (directionsAvailableCnt != 0) {  // while move is possible in at least 1 direction
+            offset++;
+            for (int i = 0; i < directionFlags.length; i++) {  // for every direction
+                if (directionFlags[i]) {  // if direction is still available
+                    int newX = x + (offsetMultiplierX[i] * offset);
+                    int newY = y + (offsetMultiplierY[i] * offset);
+
+                    move = new PiecePosition(newX, newY);
+                    piece = positions.get(move.toString());
+
+                    if (move.isValid(boardSize) && piece == null) {
+                        // way is clear
+                        result++;
+                    } else if (move.isValid(boardSize) && piece != null && piece.color != color) {
+                        // piece in the way can be attacked
+                        directionFlags[i] = false;  // can not move further in this direction
+                        directionsAvailableCnt--;
+                        result++;  // but this position is possible for move
+                    } else {
+                        // either move is out of borders or piece of the same color is in the way
+                        directionFlags[i] = false;  // can not move further in this direction & this move is impossible
+                        directionsAvailableCnt--;
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * used to calculate number of possible diagonal captures.
+     * @param position PiecePosition, position of considered chess piece
+     * @param color PieceColor, color of considered chess piece
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible diagonal captures
+     */
+    default  int getDiagonalCapturesCount(PiecePosition position, PieceColor color,
+                                          Map<String, ChessPiece> positions, int boardSize) {
+        // almost same as getDiagonalMovesCount
+        int result = 0;  // return value
+        // start position
+        int x = position.getX();
+        int y = position.getY();
+
+        // flags represent availability of movement in corresponding direction: up left, up right, down left, down right
+        boolean[] directionFlags = {true, true, true, true};
+        // multipliers for offset in X & Y with respect to direction
+        int[] offsetMultiplierX = {-1, 1, -1, 1};
+        int[] offsetMultiplierY = {1, 1, -1, -1};
+        int offset = 0;  // how many moves from start
+
+        PiecePosition move;  // for considered move
+        ChessPiece piece;  // for piece placed on the considered move
+
+        int directionsAvailableCnt = 4;
+        while (directionsAvailableCnt != 0) {  // while move is possible in at least 1 direction
+            offset++;
+            for (int i = 0; i < directionFlags.length; i++) {  // for every direction
+                if (directionFlags[i]) {  // if direction is still available
+                    int newX = x + (offsetMultiplierX[i] * offset);
+                    int newY = y + (offsetMultiplierY[i] * offset);
+
+                    move = new PiecePosition(newX, newY);
+                    piece = positions.get(move.toString());
+
+                    if (piece != null || !move.isValid(boardSize)) {
+                        directionFlags[i] = false;  // can not move further in this direction
+                        directionsAvailableCnt--;
+
+                        if (piece != null && piece.color != color) {  // piece can be captured
+                            result++;
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
 }
 
+/**
+ * represents actions of Rook and partly of Queen.
+ */
 interface RookMovement {
-    int getOrthogonalMovesCount(PiecePosition position, PieceColor color,
-                                Map<String, ChessPiece> positions, int boardSize);
-    int getOrthogonalCapturesCount(PiecePosition position, PieceColor color,
-                                   Map<String, ChessPiece> positions, int boardSize);
+    /**
+     * used to calculate number of possible orthogonal moves.
+     * same logic as in Bishop movement (except offsetMultipliers)
+     * @param position PiecePosition, position of considered chess piece
+     * @param color PieceColor, color of considered chess piece
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible orthogonal moves
+     */
+    default int getOrthogonalMovesCount(PiecePosition position, PieceColor color,
+                                        Map<String, ChessPiece> positions, int boardSize) {
+        int result = 0;  // return value
+        // start position
+        int x = position.getX();
+        int y = position.getY();
+
+        // flags represent availability of movement in corresponding direction: left, right, up, down
+        boolean[] directionFlags = {true, true, true, true};
+        // multipliers for offset in X & Y with respect to direction
+        int[] offsetMultiplierX = {-1, 1, 0, 0};
+        int[] offsetMultiplierY = {0, 0, 1, -1};
+        int offset = 0;  // how many moves from start
+
+        PiecePosition move;  // for considered move
+        ChessPiece piece;  // for piece placed on the considered move
+
+        int directionsAvailableCnt = 4;
+        while (directionsAvailableCnt != 0) {  // while move is possible in at least 1 direction
+            offset++;
+            for (int i = 0; i < directionFlags.length; i++) {  // for every direction
+                if (directionFlags[i]) {  // if direction is still available
+                    int newX = x + (offsetMultiplierX[i] * offset);
+                    int newY = y + (offsetMultiplierY[i] * offset);
+
+                    move = new PiecePosition(newX, newY);
+                    piece = positions.get(move.toString());
+
+                    if (move.isValid(boardSize) && piece == null) {
+                        // way is clear
+                        result++;
+                    } else if (move.isValid(boardSize) && piece != null && piece.color != color) {
+                        // piece in the way can be attacked
+                        directionFlags[i] = false;  // can not move further in this direction
+                        directionsAvailableCnt--;
+                        result++;  // but this position is possible for move
+                    } else {
+                        // either move is out of borders or piece of the same color is in the way
+                        directionFlags[i] = false;  // can not move further in this direction & this move is impossible
+                        directionsAvailableCnt--;
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * used to calculate number of possible orthogonal captures.
+     * same logic as in Bishop movement (except offsetMultipliers)
+     * @param position PiecePosition, position of considered chess piece
+     * @param color PieceColor, color of considered chess piece
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible orthogonal captures
+     */
+    default int getOrthogonalCapturesCount(PiecePosition position, PieceColor color,
+                                           Map<String, ChessPiece> positions, int boardSize) {
+        // almost same as getDiagonalMovesCount
+        int result = 0;  // return value
+        // start position
+        int x = position.getX();
+        int y = position.getY();
+
+        // flags represent availability of movement in corresponding direction: up left, up right, down left, down right
+        boolean[] directionFlags = {true, true, true, true};
+        // multipliers for offset in X & Y with respect to direction
+        int[] offsetMultiplierX = {-1, 1, 0, 0};
+        int[] offsetMultiplierY = {0, 0, 1, -1};
+        int offset = 0;  // how many moves from start
+
+        PiecePosition move;  // for considered move
+        ChessPiece piece;  // for piece placed on the considered move
+
+        int directionsAvailableCnt = 4;
+        while (directionsAvailableCnt != 0) {  // while move is possible in at least 1 direction
+            offset++;
+            for (int i = 0; i < directionFlags.length; i++) {  // for every direction
+                if (directionFlags[i]) {  // if direction is still available
+                    int newX = x + (offsetMultiplierX[i] * offset);
+                    int newY = y + (offsetMultiplierY[i] * offset);
+
+                    move = new PiecePosition(newX, newY);
+                    piece = positions.get(move.toString());
+
+                    if (piece != null || !move.isValid(boardSize)) {
+                        directionFlags[i] = false;  // can not move further in this direction
+                        directionsAvailableCnt--;
+
+                        if (piece != null && piece.color != color) {  // piece can be captured
+                            result++;
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
 }
 
 /**
@@ -317,7 +531,7 @@ class Pawn extends ChessPiece {
     /**
      * used to calculate number of possible moves for Pawn.
      * @param positions Map<String, ChessPiece>, positions of pieces on board
-     * @param boardSize int, size of boards
+     * @param boardSize int, size of board
      * @return 1 if way for move is clear, else 0
      */
     @Override
@@ -347,7 +561,7 @@ class Pawn extends ChessPiece {
     /**
      * used to calculate number of possible captures for Pawn.
      * @param positions Map<String, ChessPiece>, positions of pieces on board
-     * @param boardSize int, size of boards
+     * @param boardSize int, size of board
      * @return int, number of possible captures
      */
     @Override
