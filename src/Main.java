@@ -204,29 +204,31 @@ abstract class ChessPiece {
 }
 
 /**
- * represents actions of Bishop and partly of Queen.
+ * used in BishopMovement and RookMovement since they are built on the same principle.
+ * directions are set by offsetMultipliers
  */
-interface BishopMovement {
+interface ContinuousMovementsWithOffset {
     /**
-     * used to calculate number of possible diagonal moves.
+     * used to calculate number of possible moves by continuously moving in provided directions.
      * @param position PiecePosition, position of considered chess piece
      * @param color PieceColor, color of considered chess piece
      * @param positions Map<String, ChessPiece>, positions of pieces on board
      * @param boardSize int, size of board
-     * @return int, number of possible diagonal moves
+     * @param offsetMultiplierX int[], array of multipliers for X-coordinate (1st, 2nd, 3rd, 4th direction)
+     * @param offsetMultiplierY int[], same as offsetMultiplierX but for Y-coordinates
+     * @return int, number of possible moves
      */
-    default int getDiagonalMovesCount(PiecePosition position, PieceColor color,
-                                      Map<String, ChessPiece> positions, int boardSize) {
+    default int getContinuousMovesCount(PiecePosition position, PieceColor color,
+                                        Map<String, ChessPiece> positions, int boardSize,
+                                        int[] offsetMultiplierX, int[] offsetMultiplierY) {
         int result = 0;  // return value
         // start position
         int x = position.getX();
         int y = position.getY();
 
-        // flags represent availability of movement in corresponding direction: up left, up right, down left, down right
+        // flags represent availability of movement in corresponding direction
         boolean[] directionFlags = {true, true, true, true};
-        // multipliers for offset in X & Y with respect to direction
-        int[] offsetMultiplierX = {-1, 1, -1, 1};
-        int[] offsetMultiplierY = {1, 1, -1, -1};
+
         int offset = 0;  // how many moves from start
 
         PiecePosition move;  // for considered move
@@ -264,26 +266,26 @@ interface BishopMovement {
     }
 
     /**
-     * used to calculate number of possible diagonal captures.
+     * used to calculate number of possible captures by continuously moving in provided directions.
      * @param position PiecePosition, position of considered chess piece
      * @param color PieceColor, color of considered chess piece
      * @param positions Map<String, ChessPiece>, positions of pieces on board
      * @param boardSize int, size of board
-     * @return int, number of possible diagonal captures
+     * @param offsetMultiplierX int[], array of multipliers for X-coordinate (1st, 2nd, 3rd, 4th direction)
+     * @param offsetMultiplierY int[], same as offsetMultiplierX but for Y-coordinates
+     * @return int, number of possible captures
      */
-    default  int getDiagonalCapturesCount(PiecePosition position, PieceColor color,
-                                          Map<String, ChessPiece> positions, int boardSize) {
-        // almost same as getDiagonalMovesCount
+    default int getContinuousCapturesCount(PiecePosition position, PieceColor color,
+                                           Map<String, ChessPiece> positions, int boardSize,
+                                           int[] offsetMultiplierX, int[] offsetMultiplierY) {
+        // almost same as getContinuousMovesCount
         int result = 0;  // return value
         // start position
         int x = position.getX();
         int y = position.getY();
 
-        // flags represent availability of movement in corresponding direction: up left, up right, down left, down right
+        // flags represent availability of movement in corresponding direction
         boolean[] directionFlags = {true, true, true, true};
-        // multipliers for offset in X & Y with respect to direction
-        int[] offsetMultiplierX = {-1, 1, -1, 1};
-        int[] offsetMultiplierY = {1, 1, -1, -1};
         int offset = 0;  // how many moves from start
 
         PiecePosition move;  // for considered move
@@ -317,12 +319,50 @@ interface BishopMovement {
 }
 
 /**
+ * represents actions of Bishop and partly of Queen.
+ */
+interface BishopMovement extends ContinuousMovementsWithOffset {
+    /**
+     * used to calculate number of possible diagonal moves.
+     * @param position PiecePosition, position of considered chess piece
+     * @param color PieceColor, color of considered chess piece
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible diagonal moves
+     */
+    default int getDiagonalMovesCount(PiecePosition position, PieceColor color,
+                                      Map<String, ChessPiece> positions, int boardSize) {
+        // multipliers for offset in X & Y with respect to direction: up left, up right, down left, down right
+        int[] offsetMultiplierX = {-1, 1, -1, 1};
+        int[] offsetMultiplierY = {1, 1, -1, -1};
+
+        return getContinuousMovesCount(position, color, positions, boardSize, offsetMultiplierX, offsetMultiplierY);
+    }
+
+    /**
+     * used to calculate number of possible diagonal captures.
+     * @param position PiecePosition, position of considered chess piece
+     * @param color PieceColor, color of considered chess piece
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible diagonal captures
+     */
+    default  int getDiagonalCapturesCount(PiecePosition position, PieceColor color,
+                                          Map<String, ChessPiece> positions, int boardSize) {
+        // multipliers for offset in X & Y with respect to direction: up left, up right, down left, down right
+        int[] offsetMultiplierX = {-1, 1, -1, 1};
+        int[] offsetMultiplierY = {1, 1, -1, -1};
+
+        return getContinuousCapturesCount(position, color, positions, boardSize, offsetMultiplierX, offsetMultiplierY);
+    }
+}
+
+/**
  * represents actions of Rook and partly of Queen.
  */
-interface RookMovement {
+interface RookMovement extends ContinuousMovementsWithOffset {
     /**
      * used to calculate number of possible orthogonal moves.
-     * same logic as in Bishop movement (except offsetMultipliers)
      * @param position PiecePosition, position of considered chess piece
      * @param color PieceColor, color of considered chess piece
      * @param positions Map<String, ChessPiece>, positions of pieces on board
@@ -331,55 +371,15 @@ interface RookMovement {
      */
     default int getOrthogonalMovesCount(PiecePosition position, PieceColor color,
                                         Map<String, ChessPiece> positions, int boardSize) {
-        int result = 0;  // return value
-        // start position
-        int x = position.getX();
-        int y = position.getY();
-
-        // flags represent availability of movement in corresponding direction: left, right, up, down
-        boolean[] directionFlags = {true, true, true, true};
-        // multipliers for offset in X & Y with respect to direction
+        // multipliers for offset in X & Y with respect to direction: left, right, up, down
         int[] offsetMultiplierX = {-1, 1, 0, 0};
         int[] offsetMultiplierY = {0, 0, 1, -1};
-        int offset = 0;  // how many moves from start
 
-        PiecePosition move;  // for considered move
-        ChessPiece piece;  // for piece placed on the considered move
-
-        int directionsAvailableCnt = 4;
-        while (directionsAvailableCnt != 0) {  // while move is possible in at least 1 direction
-            offset++;
-            for (int i = 0; i < directionFlags.length; i++) {  // for every direction
-                if (directionFlags[i]) {  // if direction is still available
-                    int newX = x + (offsetMultiplierX[i] * offset);
-                    int newY = y + (offsetMultiplierY[i] * offset);
-
-                    move = new PiecePosition(newX, newY);
-                    piece = positions.get(move.toString());
-
-                    if (move.isValid(boardSize) && piece == null) {
-                        // way is clear
-                        result++;
-                    } else if (move.isValid(boardSize) && piece != null && piece.color != color) {
-                        // piece in the way can be attacked
-                        directionFlags[i] = false;  // can not move further in this direction
-                        directionsAvailableCnt--;
-                        result++;  // but this position is possible for move
-                    } else {
-                        // either move is out of borders or piece of the same color is in the way
-                        directionFlags[i] = false;  // can not move further in this direction & this move is impossible
-                        directionsAvailableCnt--;
-                    }
-                }
-            }
-        }
-
-        return result;
+        return getContinuousMovesCount(position, color, positions, boardSize, offsetMultiplierX, offsetMultiplierY);
     }
 
     /**
      * used to calculate number of possible orthogonal captures.
-     * same logic as in Bishop movement (except offsetMultipliers)
      * @param position PiecePosition, position of considered chess piece
      * @param color PieceColor, color of considered chess piece
      * @param positions Map<String, ChessPiece>, positions of pieces on board
@@ -388,46 +388,11 @@ interface RookMovement {
      */
     default int getOrthogonalCapturesCount(PiecePosition position, PieceColor color,
                                            Map<String, ChessPiece> positions, int boardSize) {
-        // almost same as getDiagonalMovesCount
-        int result = 0;  // return value
-        // start position
-        int x = position.getX();
-        int y = position.getY();
-
-        // flags represent availability of movement in corresponding direction: up left, up right, down left, down right
-        boolean[] directionFlags = {true, true, true, true};
-        // multipliers for offset in X & Y with respect to direction
+        // multipliers for offset in X & Y with respect to direction: left, right, up, down
         int[] offsetMultiplierX = {-1, 1, 0, 0};
         int[] offsetMultiplierY = {0, 0, 1, -1};
-        int offset = 0;  // how many moves from start
 
-        PiecePosition move;  // for considered move
-        ChessPiece piece;  // for piece placed on the considered move
-
-        int directionsAvailableCnt = 4;
-        while (directionsAvailableCnt != 0) {  // while move is possible in at least 1 direction
-            offset++;
-            for (int i = 0; i < directionFlags.length; i++) {  // for every direction
-                if (directionFlags[i]) {  // if direction is still available
-                    int newX = x + (offsetMultiplierX[i] * offset);
-                    int newY = y + (offsetMultiplierY[i] * offset);
-
-                    move = new PiecePosition(newX, newY);
-                    piece = positions.get(move.toString());
-
-                    if (piece != null || !move.isValid(boardSize)) {
-                        directionFlags[i] = false;  // can not move further in this direction
-                        directionsAvailableCnt--;
-
-                        if (piece != null && piece.color != color) {  // piece can be captured
-                            result++;
-                        }
-                    }
-                }
-            }
-        }
-
-        return result;
+        return getContinuousCapturesCount(position, color, positions, boardSize, offsetMultiplierX, offsetMultiplierY);
     }
 }
 
