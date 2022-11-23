@@ -3,3 +3,5 @@ out/
 !**/src/test/**/out/
 .idea/
 assignment-4.iml
+/input.txt
+/output.txt

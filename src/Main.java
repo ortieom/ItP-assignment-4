@@ -1,38 +1,199 @@
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.List;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Scanner;
 
-public class Main {
+
+public final class Main {
     /**
      * represents chess board.
      */
     private static Board chessBoard;
+
     /**
      * file input.
      */
-    private static Scanner scanner = new Scanner(new File("input.txt"));
+    private static Scanner scanner;
+
+    static {
+        try {
+            scanner = new Scanner(new File("input.txt"));
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * file output.
+     */
+    private static FileOutputStream fout;
+
+    static {
+        try {
+            fout = new FileOutputStream("output.txt");
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * number of chess piece type in input string.
+     */
+    private static final int TYPE_INDEX = 0;
+    /**
+     * number of chess piece color in input string.
+     */
+    private static final int COLOR_INDEX = 1;
+    /**
+     * number of chess piece x-coordinate in input string.
+     */
+    private static final int X_COORDINATE_INDEX = 2;
+    /**
+     * number of chess piece y-coordinate in input string.
+     */
+    private static final int Y_COORDINATE_INDEX = 3;
+    /**
+     * available chess piece types.
+     */
+    private static final List<String> PIECE_TYPES_LIST =
+            Arrays.asList("Pawn", "King", "Knight", "Rook", "Queen", "Bishop");
+
 
     /**
      * entrypoint.
      * @param args command line arguments
      */
-    public static void main(String[] args) {
-        System.out.println("Hello world!");
+    public static void main(String[] args) throws IOException {
+        int boardSize = Integer.parseInt(scanner.nextLine());
+        // declarations for input chess piece
+        String[] chessPieceArguments;
+        PieceColor pieceColor;
+        PiecePosition piecePosition;
+        ChessPiece chessPiece;
+
+        // list for all chess pieces
+        List<PiecePosition> allPieces = new ArrayList<>();
+
+        try {
+            chessBoard = new Board(boardSize);
+            int numberOfPieces = readNumberOfPieces(2, boardSize * boardSize);  // reading number of pieces
+
+            int totalCnt = 0;  // piece counter
+
+            while (scanner.hasNext()) {
+                totalCnt++;
+                if (totalCnt > numberOfPieces) {
+                    throw new InvalidInputException();
+                }
+
+                String chessPieceArgumentsString = scanner.nextLine().replace("\n", "");
+                chessPieceArguments = chessPieceArgumentsString.split(" ");
+
+                // set of checks
+
+                if (!PIECE_TYPES_LIST.contains(chessPieceArguments[TYPE_INDEX])) {
+                    throw new InvalidPieceNameException();
+                }
+
+                pieceColor = PieceColor.parse(chessPieceArguments[COLOR_INDEX]);
+
+                piecePosition = new PiecePosition(Integer.parseInt(chessPieceArguments[X_COORDINATE_INDEX]),
+                        Integer.parseInt(chessPieceArguments[Y_COORDINATE_INDEX]));
+                if (!piecePosition.isValid(boardSize)) {
+                    throw new InvalidPiecePositionException();
+                }
+
+                switch (chessPieceArguments[TYPE_INDEX]) {
+                    case "Pawn":
+                        chessPiece = new Pawn(piecePosition, pieceColor);
+                        break;
+                    case "King":
+                        chessPiece = new King(piecePosition, pieceColor);
+                        break;
+                    case "Knight":
+                        chessPiece = new Knight(piecePosition, pieceColor);
+                        break;
+                    case "Rook":
+                        chessPiece = new Rook(piecePosition, pieceColor);
+                        break;
+                    case "Queen":
+                        chessPiece = new Queen(piecePosition, pieceColor);
+                        break;
+                    default:
+                        chessPiece = new Bishop(piecePosition, pieceColor);
+                        break;
+                }
+
+                chessBoard.addPiece(chessPiece);
+                allPieces.add(piecePosition);
+            }
+
+            chessBoard.checkKings();
+
+            if (totalCnt != numberOfPieces) {
+                throw new InvalidInputException();
+            }
+
+            for (PiecePosition position: allPieces) {
+                chessPiece = chessBoard.getPiece(position);
+                String output = chessBoard.getPiecePossibleMoveCount(chessPiece)
+                        + " " + chessBoard.getPiecePossibleCapturesCount(chessPiece) + "\n";
+                fout.write(output.getBytes());
+            }
+
+        } catch (InvalidBoardSizeException ex) {
+            fout.write((ex.getMessage() + "\n").getBytes());
+        } catch (InvalidNumberOfPiecesException ex) {
+            fout.write((ex.getMessage() + "\n").getBytes());
+        } catch (InvalidPieceNameException ex) {
+            fout.write((ex.getMessage() + "\n").getBytes());
+        } catch (InvalidPieceColorException ex) {
+            fout.write((ex.getMessage() + "\n").getBytes());
+        } catch (InvalidPiecePositionException ex) {
+            fout.write((ex.getMessage() + "\n").getBytes());
+        } catch (InvalidGivenKingsException ex) {
+            fout.write((ex.getMessage() + "\n").getBytes());
+        } catch (InvalidInputException ex) {
+            fout.write((ex.getMessage() + "\n").getBytes());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
+
+    /**
+     * used to read number of pieces.
+     * @param minimal lower bound
+     * @param maximal upper bound
+     * @return number of pieces
+     * @throws InvalidNumberOfPiecesException if result is out of bounds
+     */
+    private static int readNumberOfPieces(int minimal, int maximal) throws InvalidNumberOfPiecesException {
+        int number = Integer.parseInt(scanner.nextLine());
+        if (number < minimal || number > maximal) {
+            throw new InvalidNumberOfPiecesException();
+        }
+        return number;
+    }
+
+    private Main() { }  // so that Utility class does not have a public or default constructor, according to CheckStyle
 }
+
 
 class PiecePosition {
     /**
      * position of chess piece on X-axis.
      */
-    private int x;
+    private final int x;
     /**
      * position of chess piece on Y-axis.
      */
-    private int y;
+    private final int y;
 
     /**
      * creates a piece position class with specified coordinates.
@@ -50,7 +211,7 @@ class PiecePosition {
      * @return boolean validity
      */
     public boolean isValid(int boardSize) {
-        return this.x >= 1 && this.y >= 1 && this.x > boardSize && this.y > boardSize;
+        return this.x >= 1 && this.y >= 1 && this.x <= boardSize && this.y <= boardSize;
     }
 
     /**
@@ -78,6 +239,7 @@ class PiecePosition {
     }
 }
 
+
 /**
  * represents color of chess piece.
  * either BLACK or WHITE
@@ -104,6 +266,7 @@ enum PieceColor {
         }
     }
 }
+
 
 /**
  * represents abstract chess piece.
@@ -202,6 +365,7 @@ abstract class ChessPiece {
         return result;
     }
 }
+
 
 /**
  * used in BishopMovement and RookMovement since they are built on the same principle.
@@ -318,6 +482,7 @@ interface ContinuousMovementsWithOffset {
     }
 }
 
+
 /**
  * represents actions of Bishop and partly of Queen.
  */
@@ -357,6 +522,7 @@ interface BishopMovement extends ContinuousMovementsWithOffset {
     }
 }
 
+
 /**
  * represents actions of Rook and partly of Queen.
  */
@@ -395,6 +561,7 @@ interface RookMovement extends ContinuousMovementsWithOffset {
         return getContinuousCapturesCount(position, color, positions, boardSize, offsetMultiplierX, offsetMultiplierY);
     }
 }
+
 
 /**
  * represents Knight chess piece.
@@ -438,6 +605,7 @@ class Knight extends ChessPiece {
     }
 }
 
+
 /**
  * represents King chess piece.
  */
@@ -465,7 +633,7 @@ class King extends ChessPiece {
             for (int dy = -1; dy < 2; dy++) {  // bias in y
                 // trying all possible variants
                 PiecePosition piecePosition = new PiecePosition(x + dx, y + dy);
-                if (piecePosition.isValid(boardSize) && (dx != 0 && dy != 0)) {
+                if (piecePosition.isValid(boardSize) && (dx != 0 || dy != 0)) {
                     moves.add(piecePosition);
                 }
             }
@@ -474,6 +642,7 @@ class King extends ChessPiece {
         this.possiblePositions = new ArrayList<>(moves);
     }
 }
+
 
 /**
  * represents Pawn chess piece.
@@ -488,7 +657,7 @@ class Pawn extends ChessPiece {
         super(piecePosition, pieceColor);
     }
 
-    @Override  // redundant here (useful for King & Knight), probably will be reformatted later - TODO
+    @Override  // redundant here (useful for King & Knight)
     protected void calculatePossiblePositions(int boardSize) {
         return;
     }
@@ -559,32 +728,244 @@ class Pawn extends ChessPiece {
     }
 }
 
-class Board {
-    private Map<String, ChessPiece> positionsToPieces = new LinkedHashMap<String, ChessPiece>();
-    private int size;
 
-    Board(int boardSize) {
+/**
+ * represents Bishop chess piece.
+ */
+class Bishop extends ChessPiece implements BishopMovement {
+    /**
+     * creates a Bishop chess piece with specified position and color.
+     * @param piecePosition position on the board
+     * @param pieceColor color of a piece
+     */
+    Bishop(PiecePosition piecePosition, PieceColor pieceColor) {
+        super(piecePosition, pieceColor);
+    }
+
+    @Override  // redundant here (useful for King & Knight)
+    protected void calculatePossiblePositions(int boardSize) {
+        return;
+    }
+
+    /**
+     * used to calculate number of possible moves for Bishop.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible moves
+     */
+    @Override
+    public int getMovesCount(Map<String, ChessPiece> positions, int boardSize) {
+        return getDiagonalMovesCount(this.position, this.color, positions, boardSize);
+    }
+
+    /**
+     * used to calculate number of possible captures for Bishop.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible captures
+     */
+    @Override
+    public int getCapturesCount(Map<String, ChessPiece> positions, int boardSize) {
+        return getDiagonalCapturesCount(this.position, this.color, positions, boardSize);
+    }
+}
+
+
+/**
+ * represents Rook chess piece.
+ */
+class Rook extends ChessPiece implements RookMovement {
+    /**
+     * creates a Rook chess piece with specified position and color.
+     * @param piecePosition position on the board
+     * @param pieceColor color of a piece
+     */
+    Rook(PiecePosition piecePosition, PieceColor pieceColor) {
+        super(piecePosition, pieceColor);
+    }
+
+    @Override  // redundant here (useful for King & Knight)
+    protected void calculatePossiblePositions(int boardSize) {
+        return;
+    }
+
+    /**
+     * used to calculate number of possible moves for Rook.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible moves
+     */
+    @Override
+    public int getMovesCount(Map<String, ChessPiece> positions, int boardSize) {
+        return getOrthogonalMovesCount(this.position, this.color, positions, boardSize);
+    }
+
+    /**
+     * used to calculate number of possible captures for Rook.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible captures
+     */
+    @Override
+    public int getCapturesCount(Map<String, ChessPiece> positions, int boardSize) {
+        return getOrthogonalCapturesCount(this.position, this.color, positions, boardSize);
+    }
+}
+
+
+/**
+ * represents Queen chess piece.
+ */
+class Queen extends ChessPiece implements BishopMovement, RookMovement {
+    /**
+     * creates a Queen chess piece with specified position and color.
+     * @param piecePosition position on the board
+     * @param pieceColor color of a piece
+     */
+    Queen(PiecePosition piecePosition, PieceColor pieceColor) {
+        super(piecePosition, pieceColor);
+    }
+
+    @Override  // redundant here (useful for King & Knight)
+    protected void calculatePossiblePositions(int boardSize) {
+        return;
+    }
+
+    /**
+     * used to calculate number of possible moves for Queen.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible moves
+     */
+    @Override
+    public int getMovesCount(Map<String, ChessPiece> positions, int boardSize) {
+        return getDiagonalMovesCount(this.position, this.color, positions, boardSize)
+                + getOrthogonalMovesCount(this.position, this.color, positions, boardSize);
+    }
+
+    /**
+     * used to calculate number of possible captures for Queen.
+     * @param positions Map<String, ChessPiece>, positions of pieces on board
+     * @param boardSize int, size of board
+     * @return int, number of possible captures
+     */
+    @Override
+    public int getCapturesCount(Map<String, ChessPiece> positions, int boardSize) {
+        return getDiagonalCapturesCount(this.position, this.color, positions, boardSize)
+                + getOrthogonalCapturesCount(this.position, this.color, positions, boardSize);
+    }
+}
+
+
+class Board {
+    /**
+     * map to access chess pieces by position string.
+     */
+    private Map<String, ChessPiece> positionsToPieces = new HashMap<String, ChessPiece>();
+    /**
+     * size of the board.
+     */
+    private final int size;
+
+    /**
+     * shows if white king is already on board.
+     */
+    private boolean hasWhiteKing = false;
+    /**
+     * shows if black king is already on board.
+     */
+    private boolean hasBlackKing = false;
+
+    /**
+     * lower bound for size of the board.
+     */
+    private static final int MINIMAL_SIZE = 3;
+    /**
+     * upper bound for size of the board.
+     */
+    private static final int MAXIMAL_SIZE = 1000;
+
+    /**
+     * creates a Board with specified size.
+     * @param boardSize size of the board
+     * @throws InvalidBoardSizeException if size is too low or too high
+     */
+    Board(int boardSize) throws InvalidBoardSizeException {
+        if (boardSize < MINIMAL_SIZE || boardSize > MAXIMAL_SIZE) {
+            throw new InvalidBoardSizeException();
+        }
         this.size = boardSize;
     }
 
-//    public int getPiecePossibleMoveCount(ChessPiece piece) {
-//
-//    }
-//
-//    public int getPiecePossibleCapturesCount(ChessPiece piece) {
-//
-//    }
-//
-//    public void addPiece(ChessPiece piece)
-//            throws InvalidPiecePositionException, InvalidNumberOfPiecesException,
-//            InvalidPieceNameException, InvalidGivenKingsException {
-//
-//    }
-//
-//    public ChessPiece getPiece(PiecePosition position) {
-//
-//    }
+    /**
+     * used to calculate number of possible moves for chess piece.
+     * @param piece considered chess piece
+     * @return number of possible moves for chess piece
+     */
+    public int getPiecePossibleMoveCount(ChessPiece piece) {
+        return piece.getMovesCount(this.positionsToPieces, this.size);
+    }
+
+    /**
+     * used to calculate number of possible captures for chess piece.
+     * @param piece considered chess piece
+     * @return number of possible captures for chess piece
+     */
+    public int getPiecePossibleCapturesCount(ChessPiece piece) {
+        return piece.getCapturesCount(this.positionsToPieces, this.size);
+    }
+
+    /**
+     * used to add chess pieces on board.
+     * @param piece ChessPiece
+     * @throws InvalidInputException if piece's cell is already occupied
+     * @throws InvalidGivenKingsException if extra kings are given
+     */
+    public void addPiece(ChessPiece piece) throws InvalidInputException, InvalidGivenKingsException {
+        PiecePosition position = piece.getPosition();
+        // checking kings on the board
+        if (piece.getClass().getName().equals("King")) {
+            if (piece.getColor() == PieceColor.WHITE) {
+                if (hasWhiteKing) {  // there is white king already
+                    throw new InvalidGivenKingsException();
+                }
+                hasWhiteKing = true;
+            } else {
+                if (hasBlackKing) {  // there is black king already
+                    throw new InvalidGivenKingsException();
+                }
+                hasBlackKing = true;
+            }
+        }
+
+        if (this.positionsToPieces.get(position.toString()) != null) {
+            // if cell is already occupied
+            throw new InvalidInputException();
+        }
+
+        this.positionsToPieces.put(position.toString(), piece);
+    }
+
+    /**
+     * used to get chess piece by its position.
+     * @param position PiecePosition
+     * @return ChessPiece
+     */
+    public ChessPiece getPiece(PiecePosition position) {
+        return this.positionsToPieces.get(position.toString());
+    }
+
+    /**
+     * used to check if all kings are given.
+     * @throws InvalidGivenKingsException if not all kings are given
+     */
+    public void checkKings() throws InvalidGivenKingsException {
+        if (!(hasWhiteKing && hasBlackKing)) {
+            throw new InvalidGivenKingsException();
+        }
+    }
 }
+
 
 class InvalidBoardSizeException extends Exception {
     @Override
@@ -593,12 +974,14 @@ class InvalidBoardSizeException extends Exception {
     }
 }
 
+
 class InvalidNumberOfPiecesException extends Exception {
     @Override
     public String getMessage() {
         return "Invalid number of pieces";
     }
 }
+
 
 class InvalidPieceNameException extends Exception {
     @Override
@@ -607,12 +990,14 @@ class InvalidPieceNameException extends Exception {
     }
 }
 
+
 class InvalidPieceColorException extends Exception {
     @Override
     public String getMessage() {
         return "Invalid piece color";
     }
 }
+
 
 class InvalidPiecePositionException extends Exception {
     @Override
@@ -621,12 +1006,14 @@ class InvalidPiecePositionException extends Exception {
     }
 }
 
+
 class InvalidGivenKingsException extends Exception {
     @Override
     public String getMessage() {
         return "Invalid given Kings";
     }
 }
+
 
 class InvalidInputException extends Exception {
     @Override
