@@ -89,13 +89,11 @@ public final class Main {
             while (scanner.hasNext()) {
                 totalCnt++;
                 if (totalCnt > numberOfPieces) {
-                    throw new InvalidInputException();
+                    throw new InvalidNumberOfPiecesException();
                 }
 
                 String chessPieceArgumentsString = scanner.nextLine().replace("\n", "");
                 chessPieceArguments = chessPieceArgumentsString.split(" ");
-
-                // set of checks
 
                 if (!PIECE_TYPES_LIST.contains(chessPieceArguments[TYPE_INDEX])) {
                     throw new InvalidPieceNameException();
@@ -125,22 +123,25 @@ public final class Main {
                     case "Queen":
                         chessPiece = new Queen(piecePosition, pieceColor);
                         break;
-                    default:
+                    case "Bishop":
                         chessPiece = new Bishop(piecePosition, pieceColor);
                         break;
+                    default:
+                        throw new InvalidPieceNameException();
                 }
 
                 chessBoard.addPiece(chessPiece);
                 allPieces.add(piecePosition);
             }
 
-            chessBoard.checkKings();
+            chessBoard.checkKings();  // to check that there are 1 king of each color
 
-            if (totalCnt != numberOfPieces) {
-                throw new InvalidInputException();
+            if (totalCnt != numberOfPieces) {  // arrived fewer pieces than was declared
+                throw new InvalidNumberOfPiecesException();
             }
 
             for (PiecePosition position: allPieces) {
+                // output for every chess piece
                 chessPiece = chessBoard.getPiece(position);
                 String output = chessBoard.getPiecePossibleMoveCount(chessPiece)
                         + " " + chessBoard.getPiecePossibleCapturesCount(chessPiece) + "\n";
@@ -159,11 +160,12 @@ public final class Main {
             fout.write((ex.getMessage() + "\n").getBytes());
         } catch (InvalidGivenKingsException ex) {
             fout.write((ex.getMessage() + "\n").getBytes());
-        } catch (InvalidInputException ex) {
-            fout.write((ex.getMessage() + "\n").getBytes());
         } catch (IOException e) {
             throw new RuntimeException(e);
+        } finally {
+            fout.close();
         }
+        // I removed InvalidInputException because 6 previous exceptions cover all possible variants
     }
 
     /**
@@ -666,7 +668,7 @@ class Pawn extends ChessPiece {
      * used to calculate number of possible moves for Pawn.
      * @param positions Map<String, ChessPiece>, positions of pieces on board
      * @param boardSize int, size of board
-     * @return 1 if way for move is clear, else 0
+     * @return number of possible moves
      */
     @Override
     public int getMovesCount(Map<String, ChessPiece> positions, int boardSize) {
@@ -682,14 +684,13 @@ class Pawn extends ChessPiece {
         PiecePosition moveForward = new PiecePosition(this.position.getX(), this.position.getY() + direction);
         ChessPiece pieceInFront = positions.get(moveForward.toString());
 
-        if (moveForward.isValid(boardSize) && (pieceInFront == null || pieceInFront.color != this.color)) {
-            // if cell in forward direction is empty or can be attacked
+        if (moveForward.isValid(boardSize) && pieceInFront == null) {  // if cell in forward direction is empty
             result = 1;
         } else {
             result = 0;
         }
 
-        return result;
+        return result + getCapturesCount(positions, boardSize);  // because captures also can be counted as moves
     }
 
     /**
@@ -710,8 +711,8 @@ class Pawn extends ChessPiece {
         }
 
         // positions that can be attacked by Pawn
-        PiecePosition move1 = new PiecePosition(this.position.getX() + direction, this.position.getY() - 1);
-        PiecePosition move2 = new PiecePosition(this.position.getX() + direction, this.position.getY() + 1);
+        PiecePosition move1 = new PiecePosition(this.position.getX() - 1, this.position.getY() + direction);
+        PiecePosition move2 = new PiecePosition(this.position.getX() + 1, this.position.getY() + direction);
         // chess pieces on attacked positions
         ChessPiece piece1 = positions.get(move1.toString());
         ChessPiece piece2 = positions.get(move2.toString());
@@ -861,7 +862,7 @@ class Board {
     /**
      * map to access chess pieces by position string.
      */
-    private Map<String, ChessPiece> positionsToPieces = new HashMap<String, ChessPiece>();
+    private Map<String, ChessPiece> positionsToPieces = new HashMap<>();
     /**
      * size of the board.
      */
@@ -918,10 +919,10 @@ class Board {
     /**
      * used to add chess pieces on board.
      * @param piece ChessPiece
-     * @throws InvalidInputException if piece's cell is already occupied
+     * @throws InvalidPiecePositionException if piece's cell is already occupied
      * @throws InvalidGivenKingsException if extra kings are given
      */
-    public void addPiece(ChessPiece piece) throws InvalidInputException, InvalidGivenKingsException {
+    public void addPiece(ChessPiece piece) throws InvalidPiecePositionException, InvalidGivenKingsException {
         PiecePosition position = piece.getPosition();
         // checking kings on the board
         if (piece.getClass().getName().equals("King")) {
@@ -940,7 +941,7 @@ class Board {
 
         if (this.positionsToPieces.get(position.toString()) != null) {
             // if cell is already occupied
-            throw new InvalidInputException();
+            throw new InvalidPiecePositionException();
         }
 
         this.positionsToPieces.put(position.toString(), piece);
